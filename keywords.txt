@@ -1,0 +1,34 @@
+#######################################
+# Syntax Coloring Map For ESP8266WiFi
+#######################################
+
+#######################################
+# Library (KEYWORD3)
+#######################################
+
+ESP8266FW	             KEYWORD3
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+ESP8266FW              KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+wifiConnect            KEYWORD2
+checkWifiReconnect     KEYWORD2
+otaSetup               KEYWORD2
+mDNSSetup              KEYWORD2
+ntpConnect             KEYWORD2
+setupAll               KEYWORD2
+otaInProgress          KEYWORD2
+getLocalTime           KEYWORD2
+loadConfig             KEYWORD2
+saveConfig             KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
