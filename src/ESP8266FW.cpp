@@ -3,81 +3,23 @@ include "ESP8266FW.h"
 // ___________________________________ ESP8266FWClass ____________________________
 // - constructor
 // __________________________________________________________________________________
-ESP8266FWClass::ESP8266FWClass(char* ssid, char* pwd, char* hostName, LogSerial logSer,
-                               String logHost, String logPort, String logURL,
-                               String logFileName, String logLevelParam, String logFunctionParam,
-                               String logStrParam, String logStrlnParam)
-:_logSer(logSer)
-,_ssid("")
-,_ssidPwd("")
-,_hostName("")
-,_otaPort(0)
-,_otaPwd("")
-,_otaInProgress(false)
-,_ntpHost("")
-,_ntpPort(0)
-,_ntpSyncInterval(0)
-,_localTimeApprox(0)
-,_logSer(logSer)
-,_logHost(logHost)
-,_logPort(logPort)
-{
-  _ssid = (char *) malloc(sizeof(ssid));
-  memcopy(ssid, _ssid, sizeof(_ssid));
-
-  _ssidPwd = (char *) malloc(sizeof(pwd));
-  memcopy(pwd, _ssidPwd, sizeof(_ssidPwd));
-
-  if (! hostName || strlen(hostName) == 0) {
-    char tmp[15];
-    sprintf(tmp, "esp8266-%06x", ESP.getChipId());
-    hostName = tmp;
-  }
-  _hostName = (char *) malloc(sizeof(hostName));
-  memcopy(hostName, _hostName, sizeof(_hostName));
-  
-  if (_logSer != LOG_UNDEF && logger.regLogDestSerial(INFO, _logSer) < 0) {
-    Serial.println();
-    Serial.println("Register Serial logger failed!");
-    Serial1.println();
-    Serial1.println("Register Serial logger failed!");
-  }
-  if (_logHost.length() > 0 && logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
-                                                     logLevelParam, logFunctionParam, logStrParam, logStrlnParam) < 0) {
-    Serial.println();
-    Serial.println("Register Wifi logger failed!");
-    Serial1.println();
-    Serial1.println("Register Wifi logger failed!");
-  }
-}
-
-// ___________________________________ ESP8266FWClass ____________________________
-// - constructor
-// __________________________________________________________________________________
-ESP8266FWClass::ESP8266FWClass(char* ssid, char* pwd, char* hostName, uint16_t otaPort,
-                               char* otaPwd, LogSerial logSer, String logHost, String logPort, 
+ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, 
+                               LogSerial logSer, String logHost, String logPort, 
                                String logURL, String logFileName, String logLevelParam, 
                                String logFunctionParam, String logStrParam, String logStrlnParam)
-:_logSer(logSer)
-,_ssid("")
-,_ssidPwd("")
-,_hostName("")
-,_otaPort(otaPort)  // default is 8266
-,_otaPwd("")
+,_otaPort(0)
 ,_otaInProgress(false)
-,_ntpHost("")
 ,_ntpPort(0)
 ,_ntpSyncInterval(0)
-,_localTimeApprox(0)
 ,_logSer(logSer)
 ,_logHost(logHost)
 ,_logPort(logPort)
 {
   _ssid = (char *) malloc(sizeof(ssid));
-  memcopy(ssid, _ssid, sizeof(_ssid));
+  strcpy(_ssid, ssid);
 
   _ssidPwd = (char *) malloc(sizeof(pwd));
-  memcopy(pwd, _ssidPwd, sizeof(_ssidPwd));
+  strcpy(_ssidPwd, ssidPwd);
 
   if (! hostName || strlen(hostName) == 0) {
     char tmp[15];
@@ -85,91 +27,24 @@ ESP8266FWClass::ESP8266FWClass(char* ssid, char* pwd, char* hostName, uint16_t o
     hostName = tmp;
   }
   _hostName = (char *) malloc(sizeof(hostName));
-  memcopy(hostName, _hostName, sizeof(_hostName));
+  strcpy(_hostName, hostName);
 
-  if (otaPwd && strlen(otaPwd) > 0) {
-    _otaPwd = (char *) malloc(sizeof(otaPwd));
-    memcopy(otaPwd, _otaPwd, sizeof(_otaPwd));
+  if (_logSer != LOG_UNDEF) {
+    if (logger.regLogDestSerial(INFO, _logSer) < 0) {
+      Serial.println();
+      Serial.println("Register Serial logger failed!");
+      Serial1.println();
+      Serial1.println("Register Serial logger failed!");
+    }
   }
-
-  if (_logSer != LOG_UNDEF && logger.regLogDestSerial(INFO, _logSer) < 0) {
-    Serial.println();
-    Serial.println("Register Serial logger failed!");
-    Serial1.println();
-    Serial1.println("Register Serial logger failed!");
-  }
-  if (_logHost.length() > 0 && logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
-                                                     logLevelParam, logFunctionParam, logStrParam, logStrlnParam) < 0) {
-    Serial.println();
-    Serial.println("Register Wifi logger failed!");
-    Serial1.println();
-    Serial1.println("Register Wifi logger failed!");
-  }
-}
-
-// ___________________________________ ESP8266FWClass ____________________________
-// - constructor
-// __________________________________________________________________________________
-ESP8266FWClass::ESP8266FWClass(char* ssid, char* pwd, char* hostName, uint16_t otaPort,
-                               char* otaPwd, char* ntpHost, uint16_t ntpPort, 
-                               uint16_t ntpSyncInterval, LogSerial logSer,
-                               String logHost, String logPort, String logURL,
-                               String logFileName, String logLevelParam, 
-                               String logFunctionParam, String logStrParam, String logStrlnParam)
-:_logSer(logSer)
-,_ssid("")
-,_ssidPwd("")
-,_hostName("")
-,_otaPort(otaPort)  // default is 8266
-,_otaPwd("")
-,_otaInProgress(false)
-,_ntpHost("")
-,_ntpPort(0)
-,_ntpSyncInterval(0)
-,_localTimeApprox(0)
-,_logSer(logSer)
-,_logHost(logHost)
-,_logPort(logPort)
-{
-  _ssid = (char *) malloc(sizeof(ssid));
-  memcopy(ssid, _ssid, sizeof(_ssid));
-
-  _ssidPwd = (char *) malloc(sizeof(pwd));
-  memcopy(pwd, _ssidPwd, sizeof(_ssidPwd));
-
-  if (! hostName || strlen(hostName) == 0) {
-    char tmp[15];
-    sprintf(tmp, "esp8266-%06x", ESP.getChipId());
-    hostName = tmp;
-  }
-  _hostName = (char *) malloc(sizeof(hostName));
-  memcopy(hostName, _hostName, sizeof(_hostName));
-
-  if (otaPwd && strlen(otaPwd) > 0) {
-    _otaPwd = (char *) malloc(sizeof(otaPwd));
-    memcopy(otaPwd, _otaPwd, sizeof(_otaPwd));
-  }
-
-  if (ntpHost && strlen(ntpHost) > 0) {
-    _ntpHost = (char *) malloc(sizeof(ntpHost));
-    memcopy(ntpHost, _ntpHost, sizeof(_ntpHost));
-  }
-
-  _ntpPort         = (ntpPort)         ? ntpPort         : 123;
-  _ntpSyncInterval = (ntpSyncInterval) ? ntpSyncInterval : 300;
-
-  if (_logSer != LOG_UNDEF && logger.regLogDestSerial(INFO, _logSer) < 0) {
-    Serial.println();
-    Serial.println("Register Serial logger failed!");
-    Serial1.println();
-    Serial1.println("Register Serial logger failed!");
-  }
-  if (_logHost.length() > 0 && logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
-                                                     logLevelParam, logFunctionParam, logStrParam, logStrlnParam) < 0) {
-    Serial.println();
-    Serial.println("Register Wifi logger failed!");
-    Serial1.println();
-    Serial1.println("Register Wifi logger failed!");
+  if (_logHost && _logHost.length() > 0) {
+    if (logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
+                              logLevelParam, logFunctionParam, logStrParam, logStrlnParam) < 0) {
+      Serial.println();
+      Serial.println("Register Wifi logger failed!");
+      Serial1.println();
+      Serial1.println("Register Wifi logger failed!");
+    }
   }
 }
 
@@ -248,7 +123,7 @@ boolean ESP8266FWClass::CheckWifiReconnect() {
 // ___________________________________ otaSetup _____________________________________
 // - setup of OTA (programming over the air) stuff
 // __________________________________________________________________________________
-boolean ESP8266FWClass::otaSetup() {
+boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
   _logger.infoln("OTA-SETUP", "");
   _logger.infoln("OTA-SETUP", String("setup OTA - hostname: ") + _hostname);
 
@@ -261,11 +136,16 @@ boolean ESP8266FWClass::otaSetup() {
   if (lenght(_hostname) > 0)
     ArduinoOTA.setHostname(_hostname);
 
-  if (_otaPort)
-    ArduinoOTA.setPort(_otaPort);
+  if (otaPort) {
+    _otaPort = otaPort;
+    ArduinoOTA.setPort(_otaPort);  // default is 8266
+  }
 
-  if (length(_otaPwd) > 0)
-    ArduinoOTA.setPassword((const char *) _otaPwd);
+  if (otaPwd && strlen(otaPwd) > 0) {
+    _otaPwd = (char *) malloc(sizeof(otaPwd));
+    strcpy(_otaPwd, otaPwd);
+    ArduinoOTA.setPassword(_otaPwd);
+  }
 
   ArduinoOTA.onStart([]() {
     _otaInProgress = true;
@@ -309,6 +189,8 @@ boolean ESP8266FWClass::otaSetup() {
     else if (error == OTA_END_ERROR)     Serial1.println("End Failed");
   });
 
+  _otaInProgress = false;
+  
   ArduinoOTA.begin();
 
   _logger.infoln("OTA-SETUP", "OTA begin");
@@ -316,18 +198,17 @@ boolean ESP8266FWClass::otaSetup() {
   return true;
 }
 
-// ___________________________________ otaInProgress ________________________________
-// - returns true if OTA is in progress, else false
-// __________________________________________________________________________________
-boolean ESP8266FWClass::otaInProgress() {
-  return _otaInProgress;
-}
-
 // ___________________________________ ntpConnect ___________________________________
 // - setup of ntp server
 // __________________________________________________________________________________
-boolean ESP8266FWClass::ntpConnect() {
-  if (_ntpHost && strlen(_ntpHost) > 0) {
+boolean ESP8266FWClass::ntpConnect(char * ntpHost, uint16_t ntpPort, uint16_t ntpSyncInterval) {
+  if (ntpHost && strlen(ntpHost) > 0) {
+    _ntpHost = (char *) malloc(sizeof(ntpHost));
+    strcpy(_ntpHost, ntpHost);
+
+    _ntpPort         = ntpPort;          // default port is 123
+    _ntpSyncInterval = ntpSyncInterval;  // default 300 sec. = 5 min.
+    
     _logger.infoln("NTP-CONNECT", ""); 
     _logger.infoln("NTP-CONNECT", String("Connecting to ntp server: ") + _ntpHost);
 
@@ -335,12 +216,15 @@ boolean ESP8266FWClass::ntpConnect() {
 
     _logger.infoln("NTP-CONNECT", String("Local port: ") + UDP.localPort());
 
+    _logger.infoln("NTP-CONNECT", String("Calling syncronizing function 'ESP8266FW::getNtpTime' every ") + 
+                   _ntpSyncInterval + " seconds");
+
     setSyncProvider(getNtpTime);
     setSyncInterval(_ntpSyncInterval);
   }
   else {
     _logger.warnln("NTP-CONNECT", ""); 
-    _logger.warnln("NTP-CONNECT", "No NTP-Host declared in class-constructor!!!");
+    _logger.warnln("NTP-CONNECT", "No NTP-Host defined in parameter 'ntpHost'!!!");
   }
 }
 
@@ -360,22 +244,85 @@ boolean ESP8266FWClass::mDNSSetup() {
   }
 }
 
+// ___________________________________ setupWebserver _______________________________
+// - setup of Webserver
+// __________________________________________________________________________________
+boolean ESP8266FWClass::setupWebserver(int port, callback_function wsRootHandler, 
+                                       callback_function wsNotFoundHandler) {
+  _logger.infoln("SETUP-WEBSERVER", "");
+  _logger.infoln("SETUP-WEBSERVER", "setup Webserver...");
+
+  _webServer = new ESP8266WebServer(Port);
+
+  if (wsRootHandler)
+    _webServer.on("/", wsRootHandler);
+
+  if (wsNotFoundHandler)
+    _webServer.onNotFound(wsNotFoundHandler);
+  else
+    _webServer.onNotFound(_wsNotFoundHandler);
+
+  _webServer.begin();
+
+  _logger.infoln("SETUP-WEBSERVER", String("Webserver started, listening on port ") + String(Port));
+  
+  return true;
+}
+
+// ___________________________________ logWSDetails _________________________________
+// - Logs webserver details
+// __________________________________________________________________________________
+void ESP8266FWClass::logWSDetails(LogLevel logLev) {
+  String method = "Unknown";
+  
+  switch(_webServer.method()) {
+    case HTTP_GET:
+      method = "GET";
+      break;
+    case HTTP_POST:
+      method = "POST";
+      break;
+    case HTTP_PUT:
+      method = "PUT";
+      break;
+    case HTTP_PATCH:
+      method = "PATCH";
+      break;
+    case HTTP_DELETE:
+      method = "DELETE";
+      break;
+  }
+
+  _logger.logln(logLev, "LOG-WS-DETAILS", String("URL is: ") + _webServer.uri());
+  _logger.logln(logLev, "LOG-WS-DETAILS", String("HTTP Method on request was: ") + method);
+  
+  // Print how many properties we received and their names and values.
+  _logger.logln(logLev, "LOG-WS-DETAILS", String("Number of query properties: ") + _webServer.args());
+  for (int i = 0; i < _webServer.args(); i++) {
+    _logger.logln(logLev, "LOG-WS-DETAILS", String("  - ") + _webServer.argName(i) + " = " + _webServer.arg(i));
+  }
+}
+
 // ___________________________________ setupAll _____________________________________
 // - setup all (wifi, ota, ...)
 // __________________________________________________________________________________
-boolean ESP8266FWClass::setupAll() {
+boolean ESP8266FWClass::setupAll(uint16_t otaPort, char * otaPwd,
+                                 char * ntpHost, uint16_t ntpPort, uint16_t ntpSyncInterval,
+                                 int port, callback_function wsRootHandler, callback_function wsNotFoundHandler) {
   if (! wifiConnect())
     return false;
 
-  if (! otaSetup();
+  if (! otaSetup(otaPort, otaPwd);
     return false;
 
   if (! mDNSSetup())
     return false;
 
-  if (_ntpHost && strlen(_ntpHost) > 0)
-    if (! ntpConnect())
-      return false;
+  if (! ntpConnect(ntpHost, ntpOrt, ntpSyncInterval))
+    return false;
+
+  if (! setupWebserver(port, wsRootHandler, wsNotFoundHandler))
+    return false;
 
   return true;
 }
@@ -391,8 +338,8 @@ time_t ESP8266FWClass::getLocalTime() {
   
   time_t t_localTime = 0;
 
-  t_localTime = (year(now()) == 1970) ? _localTimeApprox : CE.toLocal(now(), &tcr);
-  _localTimeApprox = t_localTime;
+  t_localTime = (year(now()) == 1970) ? _data.localTimeApprox : CE.toLocal(now(), &tcr);
+  _data.localTimeApprox = t_localTime;
 
   _logger.debugln("GET-LOCAL-TIME", "");
   sprintf(_s_logStr, "local time: %02d.%02d.%04d - %02d:%02d:%02d",
@@ -403,10 +350,60 @@ time_t ESP8266FWClass::getLocalTime() {
   return t_localTime;
 }
 
+// ___________________________________ loadConfig ___________________________________
+// - Loads config from RTC memory
+// __________________________________________________________________________________
+template <class T> boolean ESP8266FWClass::loadConfig(T* userData) {
+  _data.saved    = 0x0000;
+  _data.userData = userData;
+
+  EEPROM.begin(512);
+  EEPROM.get(0, _data);
+  EEPROM.end();
+  
+  if (_data.saved != 0x1010) {
+    _logger.debugln("LOAD-CONFIG", "");
+    _logger.debugln("LOAD-CONFIG", "Load config failed or not saved last time !!!");
+    
+    return false;
+  }
+  else {
+    _logger.debugln("LOAD-CONFIG", "");
+    _logger.debugln("LOAD-CONFIG", "Config loaded successfully");
+    
+    return true;
+  }
+}
+
+// ___________________________________ saveConfig ___________________________________
+// - Saves config to RTC memory
+// __________________________________________________________________________________
+template <class T> boolean ESP8266FWClass::saveConfig(T* userData) {
+  _data.saved    = 0x1010;
+  _data.userData = userData;
+
+  EEPROM.begin(512);
+  EEPROM.put(0, _data);
+  delay(200);
+  EEPROM.commit();
+  EEPROM.end();
+
+  _logger.debugln("SAVE-CONFIG", "");
+  _logger.logln("SAVE-CONFIG", "Config saved successfully");
+  
+  return true;
+}
+
+//___________________________________________________________________________________
+//___________________________________________________________________________________
+// - PROTECTED METHODS
+//___________________________________________________________________________________
+//___________________________________________________________________________________
+
 // ___________________________________ sendNTPpacket ________________________________
 // - sends ntp request via UDP
 // __________________________________________________________________________________
-void ESP8266FWClass::sendNTPpacket(IPAddress& address) {
+void ESP8266FWClass::_sendNTPpacket(IPAddress& address) {
   memset(_ntpBuffer, 0, _C_NTP_PACKET_SIZE);  // set all bytes in the buffer to 0
   
   _ntpBuffer[ 0] = 0b11100011;  // Initialize values needed to form NTP request: LI, Version, Mode
@@ -427,7 +424,7 @@ void ESP8266FWClass::sendNTPpacket(IPAddress& address) {
 // ___________________________________ getNtpTime ___________________________________
 // - gets the actual time calculated by the ntp time
 // __________________________________________________________________________________
-time_t ESP8266FWClass::getNtpTime() {
+time_t ESP8266FWClass::_getNtpTime() {
   const uint32_t C_SEVENTY_YEARS = 2208988800UL;
 
   IPAddress  timeServerIP;
@@ -476,5 +473,36 @@ time_t ESP8266FWClass::getNtpTime() {
   
   return t_timeUNIX;
 }
+
+// ___________________________________ wsNotFoundHandler ____________________________
+// - Is called on any not defined URL
+// __________________________________________________________________________________
+void ESP8266FWClass::_wsNotFoundHandler() {
+  _logger.infoln("WS-NOT-FOUND-HANDLER", "");
+  _logger.infoln("WS-NOT-FOUND-HANDLER", "Not Found Handler");
+
+  logDetails(INFO);
+
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += _webServer.uri();
+  message += "\nMethod: ";
+  message += (_webServer.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += _webServer.args();
+  message += "\n";
+
+  for (uint8_t i = 0; i < _webServer.args(); i++) {
+    message += " " + _webServer.argName ( i ) + ": " + _webServer.arg ( i ) + "\n";
+  }
+
+  _webServer.send(404, "text/plain", message);
+}
+
+//___________________________________________________________________________________
+//___________________________________________________________________________________
+// - PUBLIC SINGLETON VARIABLE
+//___________________________________________________________________________________
+//___________________________________________________________________________________
 
 ESP8266FWClass ESP8266FW;

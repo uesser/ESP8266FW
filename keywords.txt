@@ -23,12 +23,23 @@ checkWifiReconnect     KEYWORD2
 otaSetup               KEYWORD2
 mDNSSetup              KEYWORD2
 ntpConnect             KEYWORD2
+setupWebserver         KEYWORD2
 setupAll               KEYWORD2
-otaInProgress          KEYWORD2
 getLocalTime           KEYWORD2
 loadConfig             KEYWORD2
 saveConfig             KEYWORD2
+logWSDetails           KEYWORD2
+getWebServer           KEYWORD2
+getLogger              KEYWORD2
+getSSID                KEYWORD2
+getHostName            KEYWORD2
+getOtaPort             KEYWORD2
+getOtaInProgress       KEYWORD2
+getNtpHost             KEYWORD2
+getNtpPort             KEYWORD2
+getNtpSyncInterval     KEYWORD2
 
-#######################################
+######################################
 # Constants (LITERAL1)
 #######################################
+

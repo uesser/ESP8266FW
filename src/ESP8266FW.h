@@ -13,33 +13,63 @@
 
 class ESP8266FWClass {
   public:
-    ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, uint16_t otaPort,
-                   char* otaPwd, char* ntpHost, uint16_t ntpPort,LogSerial logSer);
-    ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, uint16_t otaPort,
-                   char* otaPwd, LogSerial logSer);
-    ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, LogSerial logSer);
+    typedef void (*callback_function)(void);
+  
+    ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, 
+                   LogSerial logSer, String logHost, String logPort, 
+                   String logURL, String logFileName, String logLevelParam, 
+                   String logFunctionParam, String logStrParam, String logStrlnParam);
     ~ESP8266FWClass();
 
     boolean wifiConnect();
     boolean checkWifiReconnect();
 
-    boolean otaSetup();
+    boolean otaSetup(uint16_t otaPort = 0, char * otaPwd = 0);
+    boolean ntpConnect(char * ntpHost = 0, uint16_t ntpPort = 123, uint16_t ntpSyncInterval = 300);
     boolean mDNSSetup();
-    boolean ntpConnect();
 
-    boolean setupAll();
+    boolean setupWebserver(int port, callback_function wsRootHandler, 
+                           callback_function wsNotFoundHandler = _wsNotFoundHandler);
+    void logWSDetails(LogLevel logLev);
+                                      
+    boolean setupAll(uint16_t otaPort, char * otaPwd,
+                     char * ntpHost, uint16_t ntpPort, uint16_t ntpSyncInterval,
+                     int port, callback_function wsRootHandler, callback_function wsNotFoundHandler);
 
-    boolean otaInProgress();
     time_t getLocalTime();
+    
+    template <class T> boolean loadConfig(T* data);
+    template <class T> boolean saveConfig(T* data);
 
+    // getter / setter
+    ESP8266WebServer * getWebServer()       { return &_webServer; };
+    ESP8266Logger *    getLogger()          { return &_logger; };
+    char *             getSSID()            { return _ssid; };
+    char *             getHostName()        { return _hostName; };
+    uint16_t           getOtaPort()         { return _otaPort; };
+    boolean            getOtaInProgress()   { return _otaInProgress; };
+    char *             getNtpHost()         { return _ntpHost; };
+    uint16_t           getNtpPort()         { return _ntpPort; };
+    uint16_t           getNtpSyncInterval() { return _ntpSyncInterval; };
+    
   protected:
-    void sendNTPpacket(IPAddress& address);
-    time_t getNtpTime();
+    void   _sendNTPpacket(IPAddress& address);
+    time_t _getNtpTime();
+    void   _wsNotFoundHandler();
   
   private:
+    template <class T> class Data {
+      uint16_t saved;
+      time_t   localTimeApprox;
+      T *      userData;
+    };
+    static Data    _data;
+  
     const int      _C_NTP_PACKET_SIZE = 48;  // NTP time stamp is in the first 48 bytes of the message
 
     LogSerial      _logSer;
+    String         _logHost;
+    String         _logPort;
     ESP8266Logger  _logger;
     static char    _s_logStr[255];
 
@@ -54,9 +84,10 @@ class ESP8266FWClass {
                    
     char*          _ntpHost;
     uint16_t       _ntpPort;
-    uint16_t       _ntpSyncInterval;
-    time_t         _localTimeApprox;
+    uint16_t       _ntpSyncInterval;                // default 300 sec. = 5 min.
     static byte    _ntpBuffer[_C_NTP_PACKET_SIZE];  // buffer to hold incoming and outgoing packets
+    
+    _webServer     ESP8266WebServer;
 }
 
 extern ESP8266FWClass ESP8266FW;
