@@ -6,10 +6,13 @@
 #include <WiFiUdp.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
+#include <Ticker.h>
 #include <TimeLib.h>
 #include <Timezone.h>
 #include <EEPROM.h>
 #include <ESP8266Logger.h>
+
+#define C_MINUTE_MS 60000
 
 class ESP8266FWClass {
   public:
@@ -56,38 +59,43 @@ class ESP8266FWClass {
     void   _sendNTPpacket(IPAddress& address);
     time_t _getNtpTime();
     void   _wsNotFoundHandler();
+    void   _renewTimestampAndSave();
   
   private:
     template <class T> class Data {
       uint16_t saved;
-      time_t   localTimeApprox;
+      uint32_t localTimeApprox;
       T *      userData;
     };
-    static Data    _data;
-  
-    const int      _C_NTP_PACKET_SIZE = 48;  // NTP time stamp is in the first 48 bytes of the message
-
-    LogSerial      _logSer;
-    String         _logHost;
-    String         _logPort;
-    ESP8266Logger  _logger;
-    static char    _s_logStr[255];
-
-    char*          _ssid;
-    char*          _ssidPwd;
-                   
-    char*          _hostName;
-                   
-    uint16_t       _otaPort;
-    char*          _otaPwd;
-    boolean        _otaInProgress;
-                   
-    char*          _ntpHost;
-    uint16_t       _ntpPort;
-    uint16_t       _ntpSyncInterval;                // default 300 sec. = 5 min.
-    static byte    _ntpBuffer[_C_NTP_PACKET_SIZE];  // buffer to hold incoming and outgoing packets
+    static Data        _data;
+                       
+    const int          _C_NTP_PACKET_SIZE = 48;  // NTP time stamp is in the first 48 bytes of the message
+                       
+    LogSerial          _logSer;
+    String             _logHost;
+    String             _logPort;
+    ESP8266Logger      _logger;
+    static char        _s_logStr[255];
+    int                _logSerIdx;
+    int                _logWifiIdx;
+                       
+    char*              _ssid;
+    char*              _ssidPwd;
+                       
+    char*              _hostName;
+                       
+    uint16_t           _otaPort;
+    char*              _otaPwd;
+    boolean            _otaInProgress;
+                       
+    char*              _ntpHost;
+    uint16_t           _ntpPort;
+    uint16_t           _ntpSyncInterval;                // default 300 sec. = 5 min.
+    static byte        _ntpBuffer[_C_NTP_PACKET_SIZE];  // buffer to hold incoming and outgoing packets
     
-    _webServer     ESP8266WebServer;
+    ESP8266WebServer   _webServer;
+    
+    Ticker             _localTime_saveConfigTicker;
 }
 
 extern ESP8266FWClass ESP8266FW;

@@ -30,7 +30,7 @@ ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName,
   strcpy(_hostName, hostName);
 
   if (_logSer != LOG_UNDEF) {
-    if (logger.regLogDestSerial(INFO, _logSer) < 0) {
+    if ((_logSerIdx = _logger.regLogDestSerial(INFO, _logSer)) < 0) {
       Serial.println();
       Serial.println("Register Serial logger failed!");
       Serial1.println();
@@ -38,14 +38,17 @@ ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName,
     }
   }
   if (_logHost && _logHost.length() > 0) {
-    if (logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
-                              logLevelParam, logFunctionParam, logStrParam, logStrlnParam) < 0) {
+    if ((_logWifiIdx = _logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
+                                              logLevelParam, logFunctionParam, logStrParam, 
+                                              logStrlnParam)) < 0) {
       Serial.println();
       Serial.println("Register Wifi logger failed!");
       Serial1.println();
       Serial1.println("Register Wifi logger failed!");
     }
   }
+  
+  _localTime_saveConfigTicker.attach_ms(C_MINUTE_MS, _renewTimestampAndSave);
 }
 
 // ___________________________________ ~ESP8266FWClass ___________________________
@@ -71,16 +74,19 @@ ESP8266FWClass::~ESP8266FWClass() {
 // - connects to WiFi
 // __________________________________________________________________________________
 boolean ESP8266FWClass::wifiConnect() {
-  _logger.infoln("WIFI-CONNECT", "");
-  _logger.infoln("WIFI-CONNECT", "Connecting to Wifi: ");
+  _logger.infoln(_logSerIdx, "WIFI-CONNECT", "");
+  _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("----------------------------------------------------"));
+  _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("ESP8266 (re)starting or reconnecting after WiFi lost"));
+  _logger.infoln(_logSerIdx, "WIFI-CONNECT", "");
+  _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("Connecting to AP '") + _ssid + "': ");
 
   WiFi.hostname(_hostName);
   WiFi.mode(WIFI_STA);
 //  wifi_set_sleep_type(LIGHT_SLEEP_T);
   WiFi.begin(_ssid, _ssidPwd);
 
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED && i++ < 20) {
+  int connectTicks = 0;
+  while (WiFi.status() != WL_CONNECTED && connectTicks++ < 20) {
     delay(500);
     Serial.print(".");
     Serial1.print(".");
@@ -91,7 +97,13 @@ boolean ESP8266FWClass::wifiConnect() {
   if (WiFi.status() == WL_CONNECTED) {
     IPAddress IPAddr = WiFi.localIP();
 
-    _logger.infoln("WIFI-CONNECT", "");
+    _logger.infoln(_logWifiIdx, "WIFI-CONNECT", "");
+    _logger.infoln(_logWifiIdx, "WIFI-CONNECT", String("----------------------------------------------------"));
+    _logger.infoln(_logWifiIdx, "WIFI-CONNECT", String("ESP8266 (re)starting or reconnecting after WiFi lost"));
+    _logger.infoln(_logWifiIdx, "WIFI-CONNECT", "");
+    _logger.infoln(_logWifiIdx, "WIFI-CONNECT", String("Connecting to AP: ") + _ssid);
+
+    _logger.infoln("WIFI-CONNECT", String("Time to connect: ") + (connectTicks * 500) + " ms");
     _logger.infoln("WIFI-CONNECT", String("IP-Adr: ") + IPAddr[0] + "." + IPAddr[1] + "." + IPAddr[2] + "." + IPAddr[3]);
 //    WiFi.printDiag(Serial);
 
@@ -331,21 +343,51 @@ boolean ESP8266FWClass::setupAll(uint16_t otaPort, char * otaPwd,
 // - gets the local time
 // __________________________________________________________________________________
 time_t ESP8266FWClass::getLocalTime() {
-  TimeChangeRule CEST = { "CEST", Last, Sun, Mar, 2, 120 };  // Central European Summer Time
-  TimeChangeRule CET  = { "CET",  Last, Sun, Oct, 3,  60 };  // Central European Standard Time
-  Timezone CE(CEST, CET);
-  TimeChangeRule *tcr;        //pointer to the time change rule, use to get the TZ abbrev
-  
-  time_t t_localTime = 0;
+  static TimeChangeRule   CEST = { "CEST", Last, Sun, Mar, 2, 120 };  // Central European Summer Time
+  static TimeChangeRule   CET  = { "CET",  Last, Sun, Oct, 3,  60 };  // Central European Standard Time
+  static Timezone         CE(CEST, CET);
+  static TimeChangeRule * tcr;        //pointer to the time change rule, use to get the TZ abbrev
+  static unsigned long    sul_millis = 0;
 
-  t_localTime = (year(now()) == 1970) ? _data.localTimeApprox : CE.toLocal(now(), &tcr);
+  _data.localTimeApprox += (millis() - sul_millis) / 1000;
+  sul_millis = millis();      
+
+  time_t t_localTime = CE.toLocal(now(), &tcr);
+  
+  _logger.debugln("GET-LOCAL-TIME", "");
+  _logger.debugln("GET-LOCAL-TIME", "Before check TimeLocal - TimeLocalApprox deviation:");
+  sprintf(g_logStr, "local time approx: %02d.%02d.%04d - %02d:%02d:%02d",
+                    day(_data.localTimeApprox), month(_data.localTimeApprox), 
+                    year(_data.localTimeApprox), hour(_data.localTimeApprox), 
+                    minute(_data.localTimeApprox), second(_data.localTimeApprox));
+  _logger.debugln("GET-LOCAL-TIME", g_logStr);
+  sprintf(g_logStr, "local time       : %02d.%02d.%04d - %02d:%02d:%02d",
+                    day(t_localTime), month(t_localTime), year(t_localTime),
+                    hour(t_localTime), minute(t_localTime), second(t_localTime));
+  _logger.debugln("GET-LOCAL-TIME", g_logStr);
+
+  if (year(_data.localTimeApprox) > 1970 &&
+      (_data.localTimeApprox - 3600) > t_localTime || (_data.localTimeApprox + 3600) < t_localTime) {
+    t_localTime = _data.localTimeApprox;
+  
+    _logger.debugln("GET-LOCAL-TIME", 
+                    "Deviation TimeLocal - TimeLocalApprox more than 1 hour, so use LocalTimeApprox");
+  }
+
   _data.localTimeApprox = t_localTime;
 
-  _logger.debugln("GET-LOCAL-TIME", "");
-  sprintf(_s_logStr, "local time: %02d.%02d.%04d - %02d:%02d:%02d",
-                     day(t_localTime), month(t_localTime), year(t_localTime),
-                     hour(t_localTime), minute(t_localTime), second(t_localTime));
-  _logger.debugln("GET-LOCAL-TIME", _s_logStr);
+  _logger.debugln("GET-LOCAL-TIME", "After check TimeLocal - TimeLocalApprox deviation:");
+  sprintf(g_logStr, "local time approx: %02d.%02d.%04d - %02d:%02d:%02d",
+                    day(g_skullsEyes.localTimeApprox), month(g_skullsEyes.localTimeApprox), 
+                    year(g_skullsEyes.localTimeApprox), hour(g_skullsEyes.localTimeApprox), 
+                    minute(g_skullsEyes.localTimeApprox), second(g_skullsEyes.localTimeApprox));
+  _logger.debugln("GET-LOCAL-TIME", g_logStr);
+  sprintf(g_logStr, "local time       : %02d.%02d.%04d - %02d:%02d:%02d",
+                    day(t_localTime), month(t_localTime), year(t_localTime),
+                    hour(t_localTime), minute(t_localTime), second(t_localTime));
+  _logger.debugln("GET-LOCAL-TIME", g_logStr);
+
+  saveConfig();
 
   return t_localTime;
 }
@@ -361,7 +403,7 @@ template <class T> boolean ESP8266FWClass::loadConfig(T* userData) {
   EEPROM.get(0, _data);
   EEPROM.end();
   
-  if (_data.saved != 0x1010) {
+  if (_data.saved != 0xAAAA) {
     _logger.debugln("LOAD-CONFIG", "");
     _logger.debugln("LOAD-CONFIG", "Load config failed or not saved last time !!!");
     
@@ -379,7 +421,7 @@ template <class T> boolean ESP8266FWClass::loadConfig(T* userData) {
 // - Saves config to RTC memory
 // __________________________________________________________________________________
 template <class T> boolean ESP8266FWClass::saveConfig(T* userData) {
-  _data.saved    = 0x1010;
+  _data.saved    = 0xAAAA;
   _data.userData = userData;
 
   EEPROM.begin(512);
@@ -400,7 +442,7 @@ template <class T> boolean ESP8266FWClass::saveConfig(T* userData) {
 //___________________________________________________________________________________
 //___________________________________________________________________________________
 
-// ___________________________________ sendNTPpacket ________________________________
+// ___________________________________ _sendNTPpacket _______________________________
 // - sends ntp request via UDP
 // __________________________________________________________________________________
 void ESP8266FWClass::_sendNTPpacket(IPAddress& address) {
@@ -421,7 +463,7 @@ void ESP8266FWClass::_sendNTPpacket(IPAddress& address) {
   UDP.endPacket();
 }
 
-// ___________________________________ getNtpTime ___________________________________
+// ___________________________________ _getNtpTime __________________________________
 // - gets the actual time calculated by the ntp time
 // __________________________________________________________________________________
 time_t ESP8266FWClass::_getNtpTime() {
@@ -474,7 +516,7 @@ time_t ESP8266FWClass::_getNtpTime() {
   return t_timeUNIX;
 }
 
-// ___________________________________ wsNotFoundHandler ____________________________
+// ___________________________________ _wsNotFoundHandler ___________________________
 // - Is called on any not defined URL
 // __________________________________________________________________________________
 void ESP8266FWClass::_wsNotFoundHandler() {
@@ -497,6 +539,15 @@ void ESP8266FWClass::_wsNotFoundHandler() {
   }
 
   _webServer.send(404, "text/plain", message);
+}
+
+// ___________________________________ _renewTimestampAndSave _______________________
+// - Renew the local timestamp and its approx value and save config to EEPROM
+// __________________________________________________________________________________
+void ESP8266FWClass::_renewTimestampAndSave() {
+  time_t localTime = getLocalTime();
+  
+  saveConfig();
 }
 
 //___________________________________________________________________________________
