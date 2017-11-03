@@ -18,6 +18,9 @@ class ESP8266FWClass {
   public:
     typedef void (*callback_function)(void);
   
+    const uint32_t  C_SEVENTY_YEARS       = 2208988800UL;
+    const uint32_t  C_MICROSECS_PER_HOUR  = 3600 * 1000 * 1000;
+    
     ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, 
                    LogSerial logSer, String logHost, String logPort, 
                    String logURL, String logFileName, String logLevelParam, 
@@ -41,9 +44,11 @@ class ESP8266FWClass {
 
     time_t getLocalTime();
     
-    template <class T> boolean loadConfig(T* data);
-    template <class T> boolean saveConfig(T* data);
+    void deepSleep(uint32_t sleepTime);
 
+    template <class T> boolean loadUserConfig(T* data);
+    template <class T> boolean saveUserConfig(T* data);
+    
     // getter / setter
     ESP8266WebServer * getWebServer()       { return &_webServer; };
     ESP8266Logger *    getLogger()          { return &_logger; };
@@ -56,16 +61,15 @@ class ESP8266FWClass {
     uint16_t           getNtpSyncInterval() { return _ntpSyncInterval; };
     
   protected:
-    void   _sendNTPpacket(IPAddress& address);
-    time_t _getNtpTime();
-    void   _wsNotFoundHandler();
-    void   _renewTimestampAndSave();
+    void    _sendNTPpacket(IPAddress& address);
+    time_t  _getNtpTime();
+    void    _wsNotFoundHandler();
+    void    _renewTimestampAndSave();
   
   private:
-    template <class T> class Data {
+    class Data {
       uint16_t saved;
       uint32_t localTimeApprox;
-      T *      userData;
     };
     static Data        _data;
                        
@@ -92,10 +96,14 @@ class ESP8266FWClass {
     uint16_t           _ntpPort;
     uint16_t           _ntpSyncInterval;                // default 300 sec. = 5 min.
     static byte        _ntpBuffer[_C_NTP_PACKET_SIZE];  // buffer to hold incoming and outgoing packets
+    IPAddress          _ntpTimeServerIP;
     
     ESP8266WebServer   _webServer;
     
     Ticker             _localTime_saveConfigTicker;
+
+    boolean            _loadConfig();
+    boolean            _saveConfig();
 }
 
 extern ESP8266FWClass ESP8266FW;

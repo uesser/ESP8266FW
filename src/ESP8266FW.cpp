@@ -3,7 +3,7 @@ include "ESP8266FW.h"
 // ___________________________________ ESP8266FWClass ____________________________
 // - constructor
 // __________________________________________________________________________________
-ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName, 
+ESP8266FWClass::ESP8266FWClass(, 
                                LogSerial logSer, String logHost, String logPort, 
                                String logURL, String logFileName, String logLevelParam, 
                                String logFunctionParam, String logStrParam, String logStrlnParam)
@@ -15,19 +15,9 @@ ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName,
 ,_logHost(logHost)
 ,_logPort(logPort)
 {
-  _ssid = (char *) malloc(sizeof(ssid));
-  strcpy(_ssid, ssid);
-
-  _ssidPwd = (char *) malloc(sizeof(pwd));
-  strcpy(_ssidPwd, ssidPwd);
-
-  if (! hostName || strlen(hostName) == 0) {
-    char tmp[15];
-    sprintf(tmp, "esp8266-%06x", ESP.getChipId());
-    hostName = tmp;
-  }
-  _hostName = (char *) malloc(sizeof(hostName));
-  strcpy(_hostName, hostName);
+  _data.saved           = 0x0;
+  _data.localTimeApprox = 0;
+  _data.userData        = 0;
 
   if (_logSer != LOG_UNDEF) {
     if ((_logSerIdx = _logger.regLogDestSerial(INFO, _logSer)) < 0) {
@@ -47,6 +37,8 @@ ESP8266FWClass::ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName,
       Serial1.println("Register Wifi logger failed!");
     }
   }
+  
+  _loadConfig();
   
   _localTime_saveConfigTicker.attach_ms(C_MINUTE_MS, _renewTimestampAndSave);
 }
@@ -73,7 +65,21 @@ ESP8266FWClass::~ESP8266FWClass() {
 // ___________________________________ wifiConnect __________________________________
 // - connects to WiFi
 // __________________________________________________________________________________
-boolean ESP8266FWClass::wifiConnect() {
+boolean ESP8266FWClass::wifiConnect(char* ssid, char* ssidPwd, char* hostName) {
+  _ssid = (char *) malloc(sizeof(ssid));
+  strcpy(_ssid, ssid);
+
+  _ssidPwd = (char *) malloc(sizeof(pwd));
+  strcpy(_ssidPwd, ssidPwd);
+
+  if (! hostName || strlen(hostName) == 0) {
+    char tmp[15];
+    sprintf(tmp, "esp8266-%06x", ESP.getChipId());
+    hostName = tmp;
+  }
+  _hostName = (char *) malloc(sizeof(hostName));
+  strcpy(_hostName, hostName);
+
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", "");
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("----------------------------------------------------"));
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("ESP8266 (re)starting or reconnecting after WiFi lost"));
@@ -224,6 +230,15 @@ boolean ESP8266FWClass::ntpConnect(char * ntpHost, uint16_t ntpPort, uint16_t nt
     _logger.infoln("NTP-CONNECT", ""); 
     _logger.infoln("NTP-CONNECT", String("Connecting to ntp server: ") + _ntpHost);
 
+    if (! WiFi.hostByName(_ntpHost, _ntpTimeServerIP)) {  // Get the IP address of the NTP server
+      _ntpTimeServerIP = INADDR_NONE;
+      _logger.errorln("NTP-CONNECT", "DNS lookup failed!!!");
+    }
+    else {
+      _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." + 
+                     _ntpTimeServerIP[1] + "." + _ntpTimeServerIP[2] + "." + _ntpTimeServerIP[3]);
+    }
+
     UDP.begin(_ntpPort);  // Start listening for UDP messages on port "_ntpPort" (default is 123)
 
     _logger.infoln("NTP-CONNECT", String("Local port: ") + UDP.localPort());
@@ -330,7 +345,7 @@ boolean ESP8266FWClass::setupAll(uint16_t otaPort, char * otaPwd,
   if (! mDNSSetup())
     return false;
 
-  if (! ntpConnect(ntpHost, ntpOrt, ntpSyncInterval))
+  if (! ntpConnect(ntpHost, ntpPort, ntpSyncInterval))
     return false;
 
   if (! setupWebserver(port, wsRootHandler, wsNotFoundHandler))
@@ -346,92 +361,52 @@ time_t ESP8266FWClass::getLocalTime() {
   static TimeChangeRule   CEST = { "CEST", Last, Sun, Mar, 2, 120 };  // Central European Summer Time
   static TimeChangeRule   CET  = { "CET",  Last, Sun, Oct, 3,  60 };  // Central European Standard Time
   static Timezone         CE(CEST, CET);
-  static TimeChangeRule * tcr;        //pointer to the time change rule, use to get the TZ abbrev
-  static unsigned long    sul_millis = 0;
+  static TimeChangeRule * tcr;  //pointer to the time change rule, use to get the TZ abbrev
 
-  _data.localTimeApprox += (millis() - sul_millis) / 1000;
-  sul_millis = millis();      
-
-  time_t t_localTime = CE.toLocal(now(), &tcr);
-  
-  _logger.debugln("GET-LOCAL-TIME", "");
-  _logger.debugln("GET-LOCAL-TIME", "Before check TimeLocal - TimeLocalApprox deviation:");
-  sprintf(g_logStr, "local time approx: %02d.%02d.%04d - %02d:%02d:%02d",
-                    day(_data.localTimeApprox), month(_data.localTimeApprox), 
-                    year(_data.localTimeApprox), hour(_data.localTimeApprox), 
-                    minute(_data.localTimeApprox), second(_data.localTimeApprox));
-  _logger.debugln("GET-LOCAL-TIME", g_logStr);
-  sprintf(g_logStr, "local time       : %02d.%02d.%04d - %02d:%02d:%02d",
-                    day(t_localTime), month(t_localTime), year(t_localTime),
-                    hour(t_localTime), minute(t_localTime), second(t_localTime));
-  _logger.debugln("GET-LOCAL-TIME", g_logStr);
-
-  if (year(_data.localTimeApprox) > 1970 &&
-      (_data.localTimeApprox - 3600) > t_localTime || (_data.localTimeApprox + 3600) < t_localTime) {
-    t_localTime = _data.localTimeApprox;
-  
-    _logger.debugln("GET-LOCAL-TIME", 
-                    "Deviation TimeLocal - TimeLocalApprox more than 1 hour, so use LocalTimeApprox");
-  }
-
-  _data.localTimeApprox = t_localTime;
-
-  _logger.debugln("GET-LOCAL-TIME", "After check TimeLocal - TimeLocalApprox deviation:");
-  sprintf(g_logStr, "local time approx: %02d.%02d.%04d - %02d:%02d:%02d",
-                    day(g_skullsEyes.localTimeApprox), month(g_skullsEyes.localTimeApprox), 
-                    year(g_skullsEyes.localTimeApprox), hour(g_skullsEyes.localTimeApprox), 
-                    minute(g_skullsEyes.localTimeApprox), second(g_skullsEyes.localTimeApprox));
-  _logger.debugln("GET-LOCAL-TIME", g_logStr);
-  sprintf(g_logStr, "local time       : %02d.%02d.%04d - %02d:%02d:%02d",
-                    day(t_localTime), month(t_localTime), year(t_localTime),
-                    hour(t_localTime), minute(t_localTime), second(t_localTime));
-  _logger.debugln("GET-LOCAL-TIME", g_logStr);
-
-  saveConfig();
-
-  return t_localTime;
+  return CE.toLocal(now(), &tcr);
 }
 
-// ___________________________________ loadConfig ___________________________________
+// ___________________________________ deepSleep ____________________________________
+// - Sends esp8266 to deep sleep for sleepTime microseconds
+// __________________________________________________________________________________
+void ESP8266FWClass::deepSleep(uint32_t sleepTime) {
+  if (sleepTime > C_MICROSECS_PER_HOUR)
+    sleepTime = C_MICROSECS_PER_HOUR;
+  
+  // set the localTimeApprox to the time the esp8266 will wake up
+  setTime(getLocalTime() + sleepTime / 1000 / 1000);
+  _saveConfig();
+  
+  ESP.deepSleep(sleepTime);
+  delay(5000);
+}
+
+// ___________________________________ loadUserConfig _______________________________
 // - Loads config from RTC memory
 // __________________________________________________________________________________
-template <class T> boolean ESP8266FWClass::loadConfig(T* userData) {
-  _data.saved    = 0x0000;
-  _data.userData = userData;
-
+template <class T> boolean ESP8266FWClass::loadUserConfig(T* userData) {
   EEPROM.begin(512);
-  EEPROM.get(0, _data);
+  EEPROM.get(512, userData);
   EEPROM.end();
   
-  if (_data.saved != 0xAAAA) {
-    _logger.debugln("LOAD-CONFIG", "");
-    _logger.debugln("LOAD-CONFIG", "Load config failed or not saved last time !!!");
+  _logger.debugln("LOAD-USER-CONFIG", "");
+  _logger.debugln("LOAD-USER-CONFIG", "User config loaded successfully");
     
-    return false;
-  }
-  else {
-    _logger.debugln("LOAD-CONFIG", "");
-    _logger.debugln("LOAD-CONFIG", "Config loaded successfully");
-    
-    return true;
-  }
+  return true;
 }
 
-// ___________________________________ saveConfig ___________________________________
+// ___________________________________ saveUserConfig _______________________________
 // - Saves config to RTC memory
 // __________________________________________________________________________________
-template <class T> boolean ESP8266FWClass::saveConfig(T* userData) {
-  _data.saved    = 0xAAAA;
-  _data.userData = userData;
-
+template <class T> boolean ESP8266FWClass::saveUserConfig(T* userData) {
   EEPROM.begin(512);
-  EEPROM.put(0, _data);
+  EEPROM.put(512, userData);
   delay(200);
   EEPROM.commit();
   EEPROM.end();
 
-  _logger.debugln("SAVE-CONFIG", "");
-  _logger.logln("SAVE-CONFIG", "Config saved successfully");
+  _logger.debugln("SAVE-USER-CONFIG", "");
+  _logger.logln("SAVE-USER-CONFIG", "User config saved successfully");
   
   return true;
 }
@@ -467,9 +442,6 @@ void ESP8266FWClass::_sendNTPpacket(IPAddress& address) {
 // - gets the actual time calculated by the ntp time
 // __________________________________________________________________________________
 time_t ESP8266FWClass::_getNtpTime() {
-  const uint32_t C_SEVENTY_YEARS = 2208988800UL;
-
-  IPAddress  timeServerIP;
   uint32_t   ui_ntpTime  = 0;
   time_t     t_timeUNIX  = 0;
 
@@ -478,40 +450,52 @@ time_t ESP8266FWClass::_getNtpTime() {
     _logger.debugln("GET-NTP-TIME", "");
     _logger.debugln("GET-NTP-TIME", "Sending NTP request ...");
   
-  if (! WiFi.hostByName(_ntpHost, timeServerIP)) {  // Get the IP address of the NTP server
-    _logger.debugln("GET-NTP-TIME", "DNS lookup failed!");
-  }
-  else {
-    _logger.debugln("GET-NTP-TIME", String("Time server IP: ") + timeServerIP[0] + "." + timeServerIP[1] + "." + 
-                                                                 timeServerIP[2] + "." + timeServerIP[3]);
-
-    sendNTPpacket(timeServerIP);
-  
-    uint32_t ui_beginWait = millis();
-    while (millis() - ui_beginWait < 1000) {
-      if (UDP.parsePacket() >= _C_NTP_PACKET_SIZE) {
-        _logger.debugln("GET-NTP-TIME", "Receive NTP Response");
-        
-        UDP.read(_ntpBuffer, _C_NTP_PACKET_SIZE);  // read packet into the buffer
-  
-        // convert four bytes starting at location 40 to a long integer
-        ui_ntpTime = (_ntpBuffer[40] << 24) | (_ntpBuffer[41] << 16) | 
-                     (_ntpBuffer[42] <<  8) |  _ntpBuffer[43];
-  
-        t_timeUNIX = ui_ntpTime - C_SEVENTY_YEARS;
+    if (_ntpTimeServerIP == INADDR_NONE) {
+      if (! WiFi.hostByName(_ntpHost, _ntpTimeServerIP)) {  // Get the IP address of the NTP server
+        _logger.errorln("NTP-CONNECT", "DNS lookup failed!!!");
+      }
+      else {
+        _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." + 
+                       _ntpTimeServerIP[1] + "." + _ntpTimeServerIP[2] + "." + _ntpTimeServerIP[3]);
       }
     }
   
+    for (int i = 1; i <= 2; i++) {
+      sendNTPpacket(_ntpTimeServerIP);
+    
+      uint32_t ui_beginWait = millis();
+      while (millis() - ui_beginWait < 3000) {
+        if (UDP.parsePacket() >= _C_NTP_PACKET_SIZE) {
+          _logger.debugln("GET-NTP-TIME", "Receive NTP Response");
+          
+          UDP.read(_ntpBuffer, _C_NTP_PACKET_SIZE);  // read packet into the buffer
+    
+          // convert four bytes starting at location 40 to a long integer
+          ui_ntpTime = (_ntpBuffer[40] << 24) | (_ntpBuffer[41] << 16) | 
+                       (_ntpBuffer[42] <<  8) |  _ntpBuffer[43];
+    
+          t_timeUNIX = ui_ntpTime - C_SEVENTY_YEARS;
+  
+          break;
+        }
+      }
+  
+      if (t_timeUNIX > 0)
+        break;
+    }
+
     if (t_timeUNIX == 0) {
       _logger.debugln("GET-NTP-TIME", "No NTP Response!");
    }
     else {
-      sprintf(_s_logStr, "UTC time: %02d:%02d:%02d", 
+      sprintf(_s_logStr, "UTC time: %02d.%02d.%04d - %02d:%02d:%02d",
+                         day(t_timeUNIX), month(t_timeUNIX), year(t_timeUNIX), 
                          hour(t_timeUNIX), minute(t_timeUNIX), second(t_timeUNIX));
       _logger.debugln("GET-NTP-TIME", _s_logStr);
-      _logger.debugln("GET-NTP-TIME", "");
     }
   }
+
+  _saveConfig();
   
   return t_timeUNIX;
 }
@@ -545,9 +529,58 @@ void ESP8266FWClass::_wsNotFoundHandler() {
 // - Renew the local timestamp and its approx value and save config to EEPROM
 // __________________________________________________________________________________
 void ESP8266FWClass::_renewTimestampAndSave() {
-  time_t localTime = getLocalTime();
+  _saveConfig();
+}
+
+//___________________________________________________________________________________
+//___________________________________________________________________________________
+// - PRIVATE METHODS
+//___________________________________________________________________________________
+//___________________________________________________________________________________
+
+// ___________________________________ _loadConfig __________________________________
+// - Loads config from RTC memory
+// __________________________________________________________________________________
+boolean ESP8266FWClass::_loadConfig() {
+  _data.saved = 0x0;
+
+  EEPROM.begin(512);
+  EEPROM.get(0, _data);
+  EEPROM.end();
   
-  saveConfig();
+  if (_data.saved != 0xAAAA) {
+    _logger.debugln("LOAD-CONFIG", "");
+    _logger.debugln("LOAD-CONFIG", "Load config failed or not saved last time !!!");
+    
+    return false;
+  }
+  else {
+    setTime(_data.localTimeApprox);
+    
+    _logger.debugln("LOAD-CONFIG", "");
+    _logger.debugln("LOAD-CONFIG", "Config loaded successfully");
+    
+    return true;
+  }
+}
+
+// ___________________________________ _saveConfig __________________________________
+// - Saves config to RTC memory
+// __________________________________________________________________________________
+boolean ESP8266FWClass::_saveConfig() {
+  _data.saved           = 0xAAAA;
+  _data.localTimeApprox = getLocalTime();
+
+  EEPROM.begin(512);
+  EEPROM.put(0, _data);
+  delay(200);
+  EEPROM.commit();
+  EEPROM.end();
+
+  _logger.debugln("SAVE-CONFIG", "");
+  _logger.logln("SAVE-CONFIG", "Config saved successfully");
+  
+  return true;
 }
 
 //___________________________________________________________________________________
