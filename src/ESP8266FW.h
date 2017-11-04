@@ -27,7 +27,12 @@ class ESP8266FWClass {
                    String logFunctionParam, String logStrParam, String logStrlnParam);
     ~ESP8266FWClass();
 
-    boolean wifiConnect();
+    void setupWifi(char* ssid, char* ssidPwd, char* hostName);
+    void setupLogger(LogSerial logSer, String logHost, String logPort, 
+                     String logURL, String logFileName, String logLevelParam, 
+                     String logFunctionParam, String logStrParam, String logStrlnParam);
+
+    boolean wifiConnect(char* ssid, char* ssidPwd, char* hostName);
     boolean checkWifiReconnect();
 
     boolean otaSetup(uint16_t otaPort = 0, char * otaPwd = 0);
