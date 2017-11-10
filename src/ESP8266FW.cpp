@@ -1,6 +1,6 @@
 include "ESP8266FW.h"
 
-// ___________________________________ ESP8266FWClass ____________________________
+// ___________________________________ ESP8266FWClass _______________________________
 // - constructor
 // __________________________________________________________________________________
 ESP8266FWClass::ESP8266FWClass()
@@ -18,12 +18,12 @@ ESP8266FWClass::ESP8266FWClass()
 
   _loadConfig();
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _localTime_saveConfigTicker.attach_ms(C_MINUTE_MS, _renewTimestampAndSave);
 #endif
 }
 
-// ___________________________________ ~ESP8266FWClass ___________________________
+// ___________________________________ ~ESP8266FWClass ______________________________
 // - destructor
 // __________________________________________________________________________________
 ESP8266FWClass::~ESP8266FWClass() {
@@ -38,7 +38,7 @@ ESP8266FWClass::~ESP8266FWClass() {
   if (_ntpHost)
     free(_ntpHost);
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _logger.unregLogDestSerial(_logSer);
   _logger.unregLogDestWifi(_logHost, _logPort);
 #endif
@@ -47,11 +47,11 @@ ESP8266FWClass::~ESP8266FWClass() {
 // ___________________________________ setupLogger __________________________________
 // - sets logging stuff
 // __________________________________________________________________________________
-void ESP8266FWClass::setupLogger(LogSerial logSer, String logHost, String logPort, 
-                                 String logURL, String logFileName, String logLevelParam, 
-                                 String logFunctionParam, String logStrParam, 
+void ESP8266FWClass::setupLogger(LogSerial logSer, String logHost, String logPort,
+                                 String logURL, String logFileName, String logLevelParam,
+                                 String logFunctionParam, String logStrParam,
                                  String logStrlnParam) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   if (_logSer != LOG_UNDEF) {
     if ((_logSerIdx = _logger.regLogDestSerial(INFO, _logSer)) < 0) {
       Serial.println();
@@ -61,8 +61,8 @@ void ESP8266FWClass::setupLogger(LogSerial logSer, String logHost, String logPor
     }
   }
   if (_logHost && _logHost.length() > 0) {
-    if ((_logWifiIdx = _logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log", 
-                                              logLevelParam, logFunctionParam, logStrParam, 
+    if ((_logWifiIdx = _logger.regLogDestWifi(INFO, _logHost, _logPort, logURL, String(_hostname) + ".log",
+                                              logLevelParam, logFunctionParam, logStrParam,
                                               logStrlnParam)) < 0) {
       Serial.println();
       Serial.println("Register Wifi logger failed!");
@@ -105,7 +105,7 @@ void ESP8266FWClass::setupWifi(char* ssid, char* ssidPwd, char* hostName) {
 // - connects to WiFi
 // __________________________________________________________________________________
 boolean ESP8266FWClass::wifiConnect() {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", "");
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("----------------------------------------------------"));
   _logger.infoln(_logSerIdx, "WIFI-CONNECT", String("ESP8266 (re)starting or reconnecting after WiFi lost"));
@@ -121,18 +121,18 @@ boolean ESP8266FWClass::wifiConnect() {
   int connectTicks = 0;
   while (WiFi.status() != WL_CONNECTED && connectTicks++ < 20) {
     delay(500);
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     Serial.print(".");
     Serial1.print(".");
 #endif
   }
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   Serial.println();
   Serial1.println();
 #endif
 
   if (WiFi.status() == WL_CONNECTED) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     IPAddress IPAddr = WiFi.localIP();
 
     _logger.infoln(_logWifiIdx, "WIFI-CONNECT", "");
@@ -149,7 +149,7 @@ boolean ESP8266FWClass::wifiConnect() {
     return true;
   }
   else {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     _logger.errorln("WIFI-CONNECT", "");
     _logger.errorln("WIFI-CONNECT", "Connect to WiFi failed!!!");
 #endif
@@ -158,12 +158,12 @@ boolean ESP8266FWClass::wifiConnect() {
   }
 }
 
-// ___________________________________ CheckWifiReconnect ___________________________
+// ___________________________________ checkWifiReconnect ___________________________
 // - check if connected to WiFi and try reconnecting if not
 // __________________________________________________________________________________
-boolean ESP8266FWClass::CheckWifiReconnect() {
+boolean ESP8266FWClass::checkWifiReconnect() {
   if (WiFi.status() != WL_CONNECTED) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     _logger.warnln("CHECK-WIFI-RECONNECT", "");
     _logger.warnln("CHECK-WIFI-RECONNECT", "Connection to Wifi lost. Trying to reconnect.");
 #endif
@@ -175,20 +175,20 @@ boolean ESP8266FWClass::CheckWifiReconnect() {
   }
 }
 
-// ___________________________________ otaSetup _____________________________________
+// ___________________________________ otaConnect ___________________________________
 // - setup of OTA (programming over the air) stuff
 // __________________________________________________________________________________
-boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
-#ifndef ENERGY_EFFICIENT  
-  _logger.infoln("OTA-SETUP", "");
-  _logger.infoln("OTA-SETUP", String("setup OTA - hostname: ") + _hostname);
+boolean ESP8266FWClass::otaConnect(uint16_t otaPort, char * otaPwd) {
+#ifndef ENERGY_EFFICIENT
+  _logger.infoln("OTA-CONNECT", "");
+  _logger.infoln("OTA-CONNECT", String("setup OTA - hostname: ") + _hostname);
 #endif
 
   if (WiFi.status() != WL_CONNECTED) {
-#ifndef ENERGY_EFFICIENT  
-    _logger.errorln("OTA-SETUP", "Wifi not connected!!!");
+#ifndef ENERGY_EFFICIENT
+    _logger.errorln("OTA-CONNECT", "Wifi not connected!!!");
 #endif
-    
+
     return false;
   }
 
@@ -208,8 +208,8 @@ boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
 
   ArduinoOTA.onStart([]() {
     _otaInProgress = true;
-    
-#ifndef ENERGY_EFFICIENT  
+
+#ifndef ENERGY_EFFICIENT
     Serial.println();
     Serial.println("OTA - Start");
     Serial1.println();
@@ -219,8 +219,8 @@ boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
 
   ArduinoOTA.onEnd([]() {
     _otaInProgress = false;
-    
-#ifndef ENERGY_EFFICIENT  
+
+#ifndef ENERGY_EFFICIENT
     Serial.println();
     Serial.println("OTA - End");
     Serial.println("Rebooting...");
@@ -232,7 +232,7 @@ boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
 #endif
   });
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r\n", (progress / (total / 100)));
     Serial1.printf("Progress: %u%%\r\n", (progress / (total / 100)));
@@ -241,8 +241,8 @@ boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
 
   ArduinoOTA.onError([](ota_error_t error) {
     _otaInProgress = false;
-    
-#ifndef ENERGY_EFFICIENT  
+
+#ifndef ENERGY_EFFICIENT
     Serial.printf("Error[%u]: ", error);
          if (error == OTA_AUTH_ERROR)    Serial.println("Auth Failed");
     else if (error == OTA_BEGIN_ERROR)   Serial.println("Begin Failed");
@@ -259,11 +259,11 @@ boolean ESP8266FWClass::otaSetup(uint16_t otaPort, char * otaPwd) {
   });
 
   _otaInProgress = false;
-  
+
   ArduinoOTA.begin();
 
-#ifndef ENERGY_EFFICIENT  
-  _logger.infoln("OTA-SETUP", "OTA begin");
+#ifndef ENERGY_EFFICIENT
+  _logger.infoln("OTA-CONNECT", "OTA begin");
 #endif
 
   return true;
@@ -279,73 +279,81 @@ boolean ESP8266FWClass::ntpConnect(char * ntpHost, uint16_t ntpPort, uint16_t nt
 
     _ntpPort         = ntpPort;          // default port is 123
     _ntpSyncInterval = ntpSyncInterval;  // default 300 sec. = 5 min.
-    
-#ifndef ENERGY_EFFICIENT  
-    _logger.infoln("NTP-CONNECT", ""); 
+
+#ifndef ENERGY_EFFICIENT
+    _logger.infoln("NTP-CONNECT", "");
     _logger.infoln("NTP-CONNECT", String("Connecting to ntp server: ") + _ntpHost);
 #endif
 
     if (! WiFi.hostByName(_ntpHost, _ntpTimeServerIP)) {  // Get the IP address of the NTP server
       _ntpTimeServerIP = INADDR_NONE;
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
       _logger.errorln("NTP-CONNECT", "DNS lookup failed!!!");
 #endif
     }
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     else {
-      _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." + 
+      _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." +
                      _ntpTimeServerIP[1] + "." + _ntpTimeServerIP[2] + "." + _ntpTimeServerIP[3]);
     }
 #endif
 
     UDP.begin(_ntpPort);  // Start listening for UDP messages on port "_ntpPort" (default is 123)
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     _logger.infoln("NTP-CONNECT", String("Local port: ") + UDP.localPort());
 
-    _logger.infoln("NTP-CONNECT", String("Calling syncronizing function 'ESP8266FW::getNtpTime' every ") + 
+    _logger.infoln("NTP-CONNECT", String("Calling syncronizing function 'ESP8266FW::getNtpTime' every ") +
                    _ntpSyncInterval + " seconds");
 #endif
 
     setSyncProvider(getNtpTime);
     setSyncInterval(_ntpSyncInterval);
   }
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   else {
-    _logger.warnln("NTP-CONNECT", ""); 
+    _logger.warnln("NTP-CONNECT", "");
     _logger.warnln("NTP-CONNECT", "No NTP-Host defined in parameter 'ntpHost'!!!");
   }
 #endif
 }
 
-// ___________________________________ mDNSSetup ____________________________________
+// ___________________________________ mDNSConnect __________________________________
 // - setup of mDNS responder
 // __________________________________________________________________________________
-boolean ESP8266FWClass::mDNSSetup() {
-  if (! MDNS.begin(_hostName)) {  // Start the mDNS responder for <_hostname>.local
-#ifndef ENERGY_EFFICIENT  
-    _logger.errorln("MDNS-SETUP", "Error setting up MDNS responder!!!");
+boolean ESP8266FWClass::mDNSConnect() {
+  if (WiFi.status() != WL_CONNECTED) {
+#ifndef ENERGY_EFFICIENT
+    _logger.errorln("MDNS-CONNECT", "Wifi not connected!!!");
 #endif
-    
+
     return false;
-  } 
+  }
+
+  if (! MDNS.begin(_hostName)) {  // Start the mDNS responder for <_hostname>.local
+#ifndef ENERGY_EFFICIENT
+    _logger.errorln("MDNS-CONNECT", "Error setting up MDNS responder!!!");
+#endif
+
+    return false;
+  }
   else {
-#ifndef ENERGY_EFFICIENT  
-    _logger.infoln("MDNS-SETUP", String("mDNS responder started - Hostname: ") + _hostname + ".local");
+#ifndef ENERGY_EFFICIENT
+    _logger.infoln("MDNS-CONNECT", String("mDNS responder started - Hostname: ") + _hostname + ".local");
 #endif
 
     return true;
   }
 }
 
-// ___________________________________ setupWebserver _______________________________
+// ___________________________________ webserverConnect _____________________________
 // - setup of Webserver
 // __________________________________________________________________________________
-boolean ESP8266FWClass::setupWebserver(int port, callback_function wsRootHandler, 
-                                       callback_function wsNotFoundHandler) {
-#ifndef ENERGY_EFFICIENT  
-  _logger.infoln("SETUP-WEBSERVER", "");
-  _logger.infoln("SETUP-WEBSERVER", "setup Webserver...");
+boolean ESP8266FWClass::webserverConnect(int port, callback_function wsRootHandler,
+                                         callback_function wsNotFoundHandler) {
+#ifndef ENERGY_EFFICIENT
+  _logger.infoln("WEBSERVER-CONNECT", "");
+  _logger.infoln("WEBSERVER-CONNECT", "setup Webserver...");
 #endif
 
   _webServer = new ESP8266WebServer(Port);
@@ -360,10 +368,10 @@ boolean ESP8266FWClass::setupWebserver(int port, callback_function wsRootHandler
 
   _webServer.begin();
 
-#ifndef ENERGY_EFFICIENT  
-  _logger.infoln("SETUP-WEBSERVER", String("Webserver started, listening on port ") + String(Port));
+#ifndef ENERGY_EFFICIENT
+  _logger.infoln("WEBSERVER-CONNECT", String("Webserver started, listening on port ") + String(Port));
 #endif
-  
+
   return true;
 }
 
@@ -371,9 +379,9 @@ boolean ESP8266FWClass::setupWebserver(int port, callback_function wsRootHandler
 // - Logs webserver details
 // __________________________________________________________________________________
 void ESP8266FWClass::logWSDetails(LogLevel logLev) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   String method = "Unknown";
-  
+
   switch(_webServer.method()) {
     case HTTP_GET:
       method = "GET";
@@ -394,7 +402,7 @@ void ESP8266FWClass::logWSDetails(LogLevel logLev) {
 
   _logger.logln(logLev, "LOG-WS-DETAILS", String("URL is: ") + _webServer.uri());
   _logger.logln(logLev, "LOG-WS-DETAILS", String("HTTP Method on request was: ") + method);
-  
+
   // Print how many properties we received and their names and values.
   _logger.logln(logLev, "LOG-WS-DETAILS", String("Number of query properties: ") + _webServer.args());
   for (int i = 0; i < _webServer.args(); i++) {
@@ -403,28 +411,40 @@ void ESP8266FWClass::logWSDetails(LogLevel logLev) {
 #endif
 }
 
-// ___________________________________ setupAll _____________________________________
-// - setup all (wifi, ota, ...)
+// ___________________________________ setupConnectAll ______________________________
+// - setup and connect all (wifi, ota, ...)
 // __________________________________________________________________________________
-boolean ESP8266FWClass::setupAll(uint16_t otaPort, char * otaPwd,
-                                 char * ntpHost, uint16_t ntpPort, uint16_t ntpSyncInterval,
-                                 int port, callback_function wsRootHandler, callback_function wsNotFoundHandler) {
+boolean ESP8266FWClass::setupConnectAll(LogSerial logSer, String logHost, String logPort,
+                                        String logURL, String logFileName, String logLevelParam,
+                                        String logFunctionParam, String logStrParam, String logStrlnParam,
+                                        char* ssid, char* ssidPwd, char* hostName,
+                                        uint16_t otaPort, char * otaPwd,
+                                        char * ntpHost, uint16_t ntpPort, uint16_t ntpSyncInterval,
+                                        int port, callback_function wsRootHandler,
+                                        callback_function wsNotFoundHandler) {
+  boolean connectOK = true;
+
+  setupLogger(logSer, logHost, logPort, logURL, logFileName, logLevelParam,
+              logFunctionParam, logStrParam, logStrlnParam);
+
+  setupWifi(ssid, ssidPwd, hostName);
+
   if (! wifiConnect())
-    return false;
+    connectOK = false;
 
-  if (! otaSetup(otaPort, otaPwd);
-    return false;
+  if (! otaConnect(otaPort, otaPwd);
+    connectOK = false;
 
-  if (! mDNSSetup())
-    return false;
+  if (! mDNSConnect())
+    connectOK = false;
 
   if (! ntpConnect(ntpHost, ntpPort, ntpSyncInterval))
-    return false;
+    connectOK = false;
 
-  if (! setupWebserver(port, wsRootHandler, wsNotFoundHandler))
-    return false;
+  if (! webserverConnect(port, wsRootHandler, wsNotFoundHandler))
+    connectOK = false;
 
-  return true;
+  return connectOK;
 }
 
 // ___________________________________ getLocalTime _________________________________
@@ -445,11 +465,11 @@ time_t ESP8266FWClass::getLocalTime() {
 void ESP8266FWClass::deepSleep(uint32_t sleepTime) {
   if (sleepTime > C_MICROSECS_PER_HOUR)
     sleepTime = C_MICROSECS_PER_HOUR;
-  
+
   // set the localTimeApprox to the time the esp8266 will wake up
   setTime(getLocalTime() + sleepTime / 1000 / 1000);
   _saveConfig();
-  
+
   ESP.deepSleep(sleepTime);
   delay(5000);
 }
@@ -461,12 +481,12 @@ template <class T> boolean ESP8266FWClass::loadUserConfig(T* userData) {
   EEPROM.begin(512);
   EEPROM.get(512, userData);
   EEPROM.end();
-  
-#ifndef ENERGY_EFFICIENT  
+
+#ifndef ENERGY_EFFICIENT
   _logger.debugln("LOAD-USER-CONFIG", "");
   _logger.debugln("LOAD-USER-CONFIG", "User config loaded successfully");
 #endif
-    
+
   return true;
 }
 
@@ -480,11 +500,11 @@ template <class T> boolean ESP8266FWClass::saveUserConfig(T* userData) {
   EEPROM.commit();
   EEPROM.end();
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _logger.debugln("SAVE-USER-CONFIG", "");
   _logger.logln("SAVE-USER-CONFIG", "User config saved successfully");
 #endif
-  
+
   return true;
 }
 
@@ -499,7 +519,7 @@ template <class T> boolean ESP8266FWClass::saveUserConfig(T* userData) {
 // __________________________________________________________________________________
 void ESP8266FWClass::_sendNTPpacket(IPAddress& address) {
   memset(_ntpBuffer, 0, _C_NTP_PACKET_SIZE);  // set all bytes in the buffer to 0
-  
+
   _ntpBuffer[ 0] = 0b11100011;  // Initialize values needed to form NTP request: LI, Version, Mode
   _ntpBuffer[ 1] = 0;     // Stratum, or type of clock
   _ntpBuffer[ 2] = 6;     // Polling Interval
@@ -524,58 +544,58 @@ time_t ESP8266FWClass::_getNtpTime() {
 
   while (UDP.parsePacket() > 0) ; // discard any previously received packets
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     _logger.debugln("GET-NTP-TIME", "");
     _logger.debugln("GET-NTP-TIME", "Sending NTP request ...");
 #endif
-  
+
     if (_ntpTimeServerIP == INADDR_NONE) {
       if (! WiFi.hostByName(_ntpHost, _ntpTimeServerIP)) {  // Get the IP address of the NTP server
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
         _logger.errorln("NTP-CONNECT", "DNS lookup failed!!!");
 #endif
       }
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
       else {
-        _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." + 
+        _logger.infoln("NTP-CONNECT", String("Time server IP: ") + _ntpTimeServerIP[0] + "." +
                        _ntpTimeServerIP[1] + "." + _ntpTimeServerIP[2] + "." + _ntpTimeServerIP[3]);
       }
 #endif
     }
-  
+
     for (int i = 1; i <= 2; i++) {
       sendNTPpacket(_ntpTimeServerIP);
-    
+
       uint32_t ui_beginWait = millis();
       while (millis() - ui_beginWait < 3000) {
         if (UDP.parsePacket() >= _C_NTP_PACKET_SIZE) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
           _logger.debugln("GET-NTP-TIME", "Receive NTP Response");
 #endif
-          
+
           UDP.read(_ntpBuffer, _C_NTP_PACKET_SIZE);  // read packet into the buffer
-    
+
           // convert four bytes starting at location 40 to a long integer
-          ui_ntpTime = (_ntpBuffer[40] << 24) | (_ntpBuffer[41] << 16) | 
+          ui_ntpTime = (_ntpBuffer[40] << 24) | (_ntpBuffer[41] << 16) |
                        (_ntpBuffer[42] <<  8) |  _ntpBuffer[43];
-    
+
           t_timeUNIX = ui_ntpTime - C_SEVENTY_YEARS;
-  
+
           break;
         }
       }
-  
+
       if (t_timeUNIX > 0)
         break;
     }
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     if (t_timeUNIX == 0) {
       _logger.debugln("GET-NTP-TIME", "No NTP Response!");
     }
     else {
       sprintf(_s_logStr, "UTC time: %02d.%02d.%04d - %02d:%02d:%02d",
-                         day(t_timeUNIX), month(t_timeUNIX), year(t_timeUNIX), 
+                         day(t_timeUNIX), month(t_timeUNIX), year(t_timeUNIX),
                          hour(t_timeUNIX), minute(t_timeUNIX), second(t_timeUNIX));
       _logger.debugln("GET-NTP-TIME", _s_logStr);
     }
@@ -589,7 +609,7 @@ time_t ESP8266FWClass::_getNtpTime() {
 // - Is called on any not defined URL
 // __________________________________________________________________________________
 void ESP8266FWClass::_wsNotFoundHandler() {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _logger.infoln("WS-NOT-FOUND-HANDLER", "");
   _logger.infoln("WS-NOT-FOUND-HANDLER", "Not Found Handler");
 
@@ -634,23 +654,23 @@ boolean ESP8266FWClass::_loadConfig() {
   EEPROM.begin(512);
   EEPROM.get(0, _data);
   EEPROM.end();
-  
+
   if (_data.saved != 0xAAAA) {
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
     _logger.debugln("LOAD-CONFIG", "");
     _logger.debugln("LOAD-CONFIG", "Load config failed or not saved last time !!!");
 #endif
-    
+
     return false;
   }
   else {
     setTime(_data.localTimeApprox);
-    
-#ifndef ENERGY_EFFICIENT  
+
+#ifndef ENERGY_EFFICIENT
     _logger.debugln("LOAD-CONFIG", "");
     _logger.debugln("LOAD-CONFIG", "Config loaded successfully");
 #endif
-    
+
     return true;
   }
 }
@@ -668,11 +688,11 @@ boolean ESP8266FWClass::_saveConfig() {
   EEPROM.commit();
   EEPROM.end();
 
-#ifndef ENERGY_EFFICIENT  
+#ifndef ENERGY_EFFICIENT
   _logger.debugln("SAVE-CONFIG", "");
   _logger.logln("SAVE-CONFIG", "Config saved successfully");
 #endif
-  
+
   return true;
 }
 
