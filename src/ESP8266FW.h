@@ -21,18 +21,15 @@ class ESP8266FWClass {
     const uint32_t  C_SEVENTY_YEARS       = 2208988800UL;
     const uint32_t  C_MICROSECS_PER_HOUR  = 3600 * 1000 * 1000;
 
-    ESP8266FWClass(char* ssid, char* ssidPwd, char* hostName,
-                   LogSerial logSer, String logHost, String logPort,
-                   String logURL, String logFileName, String logLevelParam,
-                   String logFunctionParam, String logStrParam, String logStrlnParam);
+    ESP8266FWClass();
     ~ESP8266FWClass();
 
-    void setupWifi(char* ssid, char* ssidPwd, char* hostName);
     void setupLogger(LogSerial logSer, String logHost, String logPort,
                      String logURL, String logFileName, String logLevelParam,
                      String logFunctionParam, String logStrParam, String logStrlnParam);
 
-    boolean wifiConnect(char* ssid, char* ssidPwd, char* hostName);
+    void setupWifi(char* ssid, char* ssidPwd, char* hostName);
+    boolean wifiConnect();
     boolean checkWifiReconnect();
 
     boolean otaConnect(uint16_t otaPort = 0, char * otaPwd = 0);
