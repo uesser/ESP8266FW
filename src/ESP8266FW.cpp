@@ -474,6 +474,15 @@ void ESP8266FWClass::deepSleep(uint32_t sleepTime) {
   delay(5000);
 }
 
+// ___________________________________ wakeUpReason _________________________________
+// - Returns the wakeup reason code
+// __________________________________________________________________________________
+rst_reason ESP8266FWClass::wakeUpReason() {
+  struct rst_info* l_rst_info = system_get_rst_info();
+
+  return l_rst_info->reason;
+}
+
 // ___________________________________ loadUserConfig _______________________________
 // - Loads config from RTC memory
 // __________________________________________________________________________________

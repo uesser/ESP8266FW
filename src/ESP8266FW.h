@@ -52,6 +52,7 @@ class ESP8266FWClass {
     time_t getLocalTime();
 
     void deepSleep(uint32_t sleepTime);
+    rst_reason wakeUpReason();
 
     template <class T> boolean loadUserConfig(T* data);
     template <class T> boolean saveUserConfig(T* data);
